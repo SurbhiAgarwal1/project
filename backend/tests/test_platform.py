@@ -135,3 +135,28 @@ def test_runbook_catalog_loading():
     catalog = get_runbook_catalog()
     assert "payment-api-recovery" in catalog
     assert len(catalog["payment-api-recovery"].steps) >= 5
+
+
+@pytest.mark.asyncio
+async def test_agent_refuses_to_guess_without_concrete_evidence():
+    """ZERO-GUESSWORK TEST: Agent refuses to formulate root cause or propose mutation without verified evidence."""
+    mock_read = MagicMock()
+    executor = AgentNodeExecutor(read_client=mock_read)
+
+    state = AgentState(
+        incident_id="inc-test-inconclusive",
+        service="payment-api",
+        namespace="opsara-demo"
+    )
+    # Empty / inconclusive evidence
+    state.evidence = []
+
+    state = await executor.analyze_node(state)
+    assert "Insufficient Telemetry" in state.hypotheses[0]["likely_cause"]
+    assert state.confidence <= 0.30
+
+    # Decision node must NOT propose any action
+    state = await executor.decision_node(state)
+    assert state.proposed_action is None
+    assert state.final_status == "ESCALATED"
+    assert any("Refusing to guess" in ev["description"] or "Inconclusive root cause" in ev["description"] for ev in state.timeline_events)

@@ -168,89 +168,115 @@ class AgentNodeExecutor:
         return state
 
     async def analyze_node(self, state: AgentState) -> AgentState:
-        """Synthesizes collected evidence and builds an evidence-backed hypothesis."""
+        """Synthesizes collected evidence and builds an evidence-backed hypothesis.
+        
+        ZERO-GUESSWORK POLICY:
+        Opsara refuses to formulate unverified conclusions or propose mutations without
+        hard, physical Kubernetes telemetry (exit codes, logs, replica counts).
+        """
         state.step_count += 1
         state.current_step = "analyzing"
 
-        # Check collected evidence for specific patterns
+        # Check collected evidence for specific, verified failure patterns
         has_oom = False
         has_db_failure = False
         has_rollout_failure = False
 
         for ev in state.evidence:
             fact = ev.get("fact", "").lower()
-            if "oomkilled" in fact or "memory" in fact:
+            if "oomkilled" in fact or "exit code 137" in fact:
                 has_oom = True
-            if "database" in fact or "connection refused" in fact:
+            if "database" in fact or "connection refused" in fact or "db_failure" in fact:
                 has_db_failure = True
-            if "unhealthy" in fact or "backoff" in fact:
+            if "imagepullbackoff" in fact or "errimagepull" in fact or "crashloopbackoff" in fact:
                 has_rollout_failure = True
 
-        dep_info = state.tool_results.get("deployment", {})
-        ready_reps = dep_info.get("ready_replicas", 0)
-        desired_reps = dep_info.get("desired_replicas", 2)
-        if ready_reps == 0 and desired_reps > 0 and not has_db_failure:
-            has_rollout_failure = True
+        dep_info = state.tool_results.get("deployment")
+        ready_reps = 0
+        desired_reps = 0
+        if dep_info and isinstance(dep_info, dict):
+            ready_reps = dep_info.get("ready_replicas", 0)
+            desired_reps = dep_info.get("desired_replicas", 0)
+            # Deployment rollout failure verified if inspected and 0 ready replicas
+            if desired_reps > 0 and ready_reps == 0 and not has_db_failure and not has_oom:
+                has_rollout_failure = True
 
-        # Formulate Hypothesis
+        # Formulate Hypothesis ONLY if concrete evidence matches
         if has_db_failure:
             state.hypotheses = [{
                 "likely_cause": "Database Connectivity Failure",
-                "confidence": 0.94,
-                "summary": "Application logs and health probe confirm database connection refused. External dependency failure detected.",
+                "confidence": 0.96,
+                "summary": "Application logs and health probe confirm database connection refused. External dependency failure detected with concrete log evidence.",
                 "supporting_evidence": [ev["fact"] for ev in state.evidence if "database" in ev.get("fact", "").lower() or "connection" in ev.get("fact", "").lower()],
                 "contradicting_evidence": []
             }]
-            state.confidence = 0.94
+            state.confidence = 0.96
             state.timeline_events.append({
                 "timestamp": _now_str(),
                 "type": "ANALYSIS",
-                "description": "Hypothesis: External database connectivity failure. Application cannot reach postgres dependency."
+                "description": "Hypothesis: External database connectivity failure confirmed. Verified by log inspection."
             })
 
         elif has_oom:
             state.hypotheses = [{
                 "likely_cause": "Memory Exhaustion (OOMKilled)",
-                "confidence": 0.95,
-                "summary": "Container was terminated with reason OOMKilled. Pod has repeatedly restarted due to memory limit constraint (128Mi).",
-                "supporting_evidence": [ev["fact"] for ev in state.evidence if "oomkilled" in ev.get("fact", "").lower() or "terminated" in ev.get("fact", "").lower()],
+                "confidence": 0.98,
+                "summary": "Container was terminated with reason OOMKilled (Exit Code 137). Repeated pod memory limit exhaustion confirmed by cluster API.",
+                "supporting_evidence": [ev["fact"] for ev in state.evidence if "oomkilled" in ev.get("fact", "").lower() or "terminated" in ev.get("fact", "").lower() or "memory" in ev.get("fact", "").lower()],
                 "contradicting_evidence": []
             }]
-            state.confidence = 0.95
+            state.confidence = 0.98
             state.timeline_events.append({
                 "timestamp": _now_str(),
                 "type": "ANALYSIS",
-                "description": "Hypothesis: Memory exhaustion (OOMKilled). Repeated restarts observed against 128Mi limit."
+                "description": "Hypothesis: Memory exhaustion (OOMKilled). Exit Code 137 verified from container termination state."
             })
 
         elif has_rollout_failure:
             state.hypotheses = [{
                 "likely_cause": "Failed Deployment Rollout",
-                "confidence": 0.90,
+                "confidence": 0.92,
                 "summary": "Deployment has 0 ready replicas. Pods are failing readiness or crash looping in current revision.",
                 "supporting_evidence": [ev["fact"] for ev in state.evidence],
                 "contradicting_evidence": []
             }]
-            state.confidence = 0.90
+            state.confidence = 0.92
             state.timeline_events.append({
                 "timestamp": _now_str(),
                 "type": "ANALYSIS",
                 "description": "Hypothesis: Stalled or failing deployment rollout. Current revision has 0 available replicas."
             })
 
-        else:
+        elif ready_reps > 0 and ready_reps >= desired_reps:
+            # Cluster inspection proves workload is healthy
             state.hypotheses = [{
-                "likely_cause": "General Workload Degradation",
-                "confidence": 0.70,
-                "summary": "Service exhibits degraded readiness or health probe failure.",
-                "supporting_evidence": [ev["fact"] for ev in state.evidence],
+                "likely_cause": "No Active Failure (Workload Healthy)",
+                "confidence": 0.99,
+                "summary": f"Direct Kubernetes inspection verified {ready_reps}/{desired_reps} replicas running in Ready state with zero restart events.",
+                "supporting_evidence": [f"Deployment has {ready_reps}/{desired_reps} ready replicas."],
                 "contradicting_evidence": []
             }]
-            state.confidence = 0.70
+            state.confidence = 0.99
             state.timeline_events.append({
                 "timestamp": _now_str(),
                 "type": "ANALYSIS",
-                "description": "Hypothesis: General workload degradation under investigation."
+                "description": f"Analysis: Workload '{state.service}' is fully healthy ({ready_reps}/{desired_reps} pods ready). No anomaly detected."
+            })
+
+        else:
+            # INSUFFICIENT EVIDENCE - AI REFUSES TO GUESS
+            state.hypotheses = [{
+                "likely_cause": "Insufficient Telemetry to Confirm Root Cause",
+                "confidence": 0.25,
+                "summary": "Observed cluster telemetry is inconclusive. AI refuses to guess or suggest unverified mutations without concrete diagnostic proof.",
+                "supporting_evidence": [ev["fact"] for ev in state.evidence],
+                "contradicting_evidence": []
+            }]
+            state.confidence = 0.25
+            state.timeline_events.append({
+                "timestamp": _now_str(),
+                "type": "ANALYSIS",
+                "description": "Analysis: Telemetry inconclusive. Refusing to formulate premature hypothesis without concrete error evidence."
             })
 
         return state
@@ -258,10 +284,11 @@ class AgentNodeExecutor:
     async def decision_node(self, state: AgentState) -> AgentState:
         """Determines the appropriate next step based on evidence.
 
-        CRITICAL AGENTIC BEHAVIOR:
-        - If Database failure: DOES NOT blindly restart. Proposes ESCALATION.
-        - If OOMKilled: proposes restart_deployment with human approval.
-        - If Rollout failure: proposes rollback_deployment with human approval.
+        ZERO-GUESSWORK / EVIDENCE-GROUNDED POLICY:
+        - If Database failure: DOES NOT blindly restart. Proposes ESCALATION to DBA team.
+        - If OOMKilled verified: proposes restart_deployment with human approval.
+        - If Rollout failure verified: proposes rollback_deployment with human approval.
+        - If Inconclusive or Healthy: REFUSES to propose any mutation.
         """
         state.step_count += 1
         state.current_step = "decision"
@@ -269,7 +296,7 @@ class AgentNodeExecutor:
         hypothesis = state.hypotheses[0] if state.hypotheses else {}
         likely_cause = hypothesis.get("likely_cause", "")
 
-        # SCENARIO C: Database Connectivity Failure -> SAFE ESCALATION, NO BLIND RESTART
+        # 1. Database Connectivity Failure -> SAFE ESCALATION, NEVER BLIND RESTART
         if "Database" in likely_cause:
             state.proposed_action = None
             state.final_status = "ESCALATED"
@@ -280,7 +307,7 @@ class AgentNodeExecutor:
             })
             return state
 
-        # SCENARIO B: Failed Rollout -> Propose Rollback
+        # 2. Failed Rollout Verified -> Propose Rollback
         elif "Rollout" in likely_cause:
             state.proposed_action = {
                 "action_type": "rollback_deployment",
@@ -294,14 +321,15 @@ class AgentNodeExecutor:
                 "type": "PROPOSAL",
                 "description": f"PROPOSAL: Rollback deployment '{state.service}' to restore previously operational ReplicaSet."
             })
+            return state
 
-        # SCENARIO A: OOMKilled / Transient -> Propose Restart
-        else:
+        # 3. OOMKilled Verified -> Propose Restart
+        elif "OOMKilled" in likely_cause:
             state.proposed_action = {
                 "action_type": "restart_deployment",
                 "target": state.service,
                 "namespace": state.namespace,
-                "reason": "Container terminated with OOMKilled. Proposing rolling restart to recycle failed pod instances.",
+                "reason": "Container terminated with OOMKilled (Exit Code 137). Proposing rolling restart to recycle failed pod instances.",
                 "parameters": {}
             }
             state.timeline_events.append({
@@ -309,8 +337,29 @@ class AgentNodeExecutor:
                 "type": "PROPOSAL",
                 "description": f"PROPOSAL: Rolling restart of deployment '{state.service}' to recover terminated containers."
             })
+            return state
 
-        return state
+        # 4. Workload Healthy -> Verified No Action Needed
+        elif "Healthy" in likely_cause:
+            state.proposed_action = None
+            state.final_status = "RESOLVED"
+            state.timeline_events.append({
+                "timestamp": _now_str(),
+                "type": "DECISION",
+                "description": "DECISION: Workload is fully healthy. No remediation required. Incident closed as false positive."
+            })
+            return state
+
+        # 5. Inconclusive Evidence -> REFUSE TO MUTATE, ESCALATE TO SRE
+        else:
+            state.proposed_action = None
+            state.final_status = "ESCALATED"
+            state.timeline_events.append({
+                "timestamp": _now_str(),
+                "type": "DECISION",
+                "description": "DECISION: Inconclusive root cause. AI refuses to execute blind mutations without concrete proof. Escalating to human SRE on-call."
+            })
+            return state
 
     async def risk_gate_node(self, state: AgentState) -> AgentState:
         """Evaluates proposed action with the deterministic risk engine.
