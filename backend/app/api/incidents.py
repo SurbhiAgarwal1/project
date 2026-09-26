@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.connection import get_db, init_db
+from app.database.connection import get_db
 from app.database.repositories import (
     IncidentRepository,
     ApprovalRepository,
@@ -46,7 +46,6 @@ async def create_incident(
     req: CreateIncidentRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    await init_db()
     repo = IncidentRepository(db)
     incident = await repo.create_incident(
         title=req.title,
@@ -73,7 +72,6 @@ async def list_incidents(
     limit: int = 50,
     db: AsyncSession = Depends(get_db)
 ):
-    await init_db()
     repo = IncidentRepository(db)
     incidents = await repo.list_incidents(status=status, limit=limit)
     return [
@@ -98,7 +96,6 @@ async def get_incident(
     incident_id: str,
     db: AsyncSession = Depends(get_db)
 ):
-    await init_db()
     repo = IncidentRepository(db)
     inc = await repo.get_incident(incident_id)
     if not inc:
@@ -172,7 +169,6 @@ async def start_investigation(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
-    await init_db()
     repo = IncidentRepository(db)
     inc = await repo.get_incident(incident_id)
     if not inc:

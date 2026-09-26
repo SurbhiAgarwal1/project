@@ -7,10 +7,21 @@ logger = logging.getLogger("opsara.scenarios")
 router = APIRouter()
 
 
+def _check_cluster_ready():
+    mgr = get_k8s_client_manager()
+    if not mgr.is_connected():
+        raise HTTPException(
+            status_code=503,
+            detail="Kubernetes cluster is not currently reachable. Please start your local cluster (e.g. minikube start or kind create cluster) before injecting failure scenarios."
+        )
+    return mgr
+
+
 @router.post("/trigger-oom")
 def trigger_oom_scenario(namespace: str = "opsara-demo", deployment_name: str = "payment-api"):
     """Triggers Scenario A: Memory exhaustion causing container OOMKilled."""
-    apps = get_k8s_client_manager().apps_v1
+    mgr = _check_cluster_ready()
+    apps = mgr.apps_v1
     body = {
         "spec": {
             "template": {
@@ -42,7 +53,8 @@ def trigger_oom_scenario(namespace: str = "opsara-demo", deployment_name: str = 
 @router.post("/trigger-db-failure")
 def trigger_db_failure_scenario(namespace: str = "opsara-demo", deployment_name: str = "payment-api"):
     """Triggers Scenario C: Database connectivity failure."""
-    apps = get_k8s_client_manager().apps_v1
+    mgr = _check_cluster_ready()
+    apps = mgr.apps_v1
     body = {
         "spec": {
             "template": {
@@ -74,7 +86,8 @@ def trigger_db_failure_scenario(namespace: str = "opsara-demo", deployment_name:
 @router.post("/trigger-rollout-failure")
 def trigger_rollout_failure_scenario(namespace: str = "opsara-demo", deployment_name: str = "payment-api"):
     """Triggers Scenario B: Failed rollout with non-existent container image tag."""
-    apps = get_k8s_client_manager().apps_v1
+    mgr = _check_cluster_ready()
+    apps = mgr.apps_v1
     body = {
         "spec": {
             "template": {
@@ -103,7 +116,8 @@ def trigger_rollout_failure_scenario(namespace: str = "opsara-demo", deployment_
 @router.post("/reset")
 def reset_demo_scenario(namespace: str = "opsara-demo", deployment_name: str = "payment-api"):
     """Resets the demo workload to healthy baseline state."""
-    apps = get_k8s_client_manager().apps_v1
+    mgr = _check_cluster_ready()
+    apps = mgr.apps_v1
     body = {
         "spec": {
             "replicas": 2,

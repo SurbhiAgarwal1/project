@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Optional, Tuple
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
@@ -18,6 +19,8 @@ class KubernetesClientManager:
         self._core_v1: Optional[client.CoreV1Api] = None
         self._apps_v1: Optional[client.AppsV1Api] = None
         self._version_api: Optional[client.VersionApi] = None
+        self._last_connected_check: float = 0.0
+        self._cached_connected: bool = False
         self._init_clients()
 
     def _init_clients(self):
@@ -33,32 +36,47 @@ class KubernetesClientManager:
                     logger.info("Falling back to default kubeconfig (~/.kube/config)...")
                     config.load_kube_config()
 
-            self._api_client = client.ApiClient()
+            conf = client.Configuration.get_default_copy()
+            conf.retries = 0
+            self._api_client = client.ApiClient(configuration=conf)
             self._core_v1 = client.CoreV1Api(self._api_client)
             self._apps_v1 = client.AppsV1Api(self._api_client)
             self._version_api = client.VersionApi(self._api_client)
 
             # Test connection with fast timeout
-            version_info = self._version_api.get_code(_request_timeout=2.0)
+            version_info = self._version_api.get_code(_request_timeout=1.0)
             self._server_version = f"{version_info.major}.{version_info.minor} ({version_info.git_version})"
             self._is_connected = True
+            self._cached_connected = True
+            self._last_connected_check = time.time()
             logger.info(f"Successfully connected to Kubernetes cluster. Server version: {self._server_version}")
 
         except Exception as e:
             self._is_connected = False
+            self._cached_connected = False
+            self._last_connected_check = time.time()
             self._server_version = None
             logger.warning(f"Failed to connect to Kubernetes cluster: {str(e)}")
 
-    def is_connected(self) -> bool:
-        """Check if Kubernetes cluster is currently reachable."""
+    def is_connected(self, force: bool = False) -> bool:
+        """Check if Kubernetes cluster is currently reachable with 10s cooldown caching."""
+        now = time.time()
+        if not force and (now - self._last_connected_check < 10.0):
+            return self._cached_connected
+
+        self._last_connected_check = now
         try:
             if self._version_api:
-                self._version_api.get_code(_request_timeout=2.0)
+                version_info = self._version_api.get_code(_request_timeout=1.0)
+                if not self._server_version:
+                    self._server_version = f"{version_info.major}.{version_info.minor} ({version_info.git_version})"
                 self._is_connected = True
+                self._cached_connected = True
                 return True
         except Exception as e:
             logger.debug(f"Connection check failed: {e}")
             self._is_connected = False
+            self._cached_connected = False
         return False
 
     def get_server_version(self) -> Optional[str]:

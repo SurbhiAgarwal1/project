@@ -53,8 +53,10 @@ class KubernetesReadClient:
 
     def list_pods(self, namespace: str, label_selector: Optional[str] = None) -> List[PodInfo]:
         """Inspects all pods in a namespace, extracting container states, terminations, and restart counts."""
-        core = self.client_mgr.core_v1
+        if not self.client_mgr.is_connected():
+            return []
         try:
+            core = self.client_mgr.core_v1
             kwargs = {}
             if label_selector:
                 kwargs["label_selector"] = label_selector
@@ -64,21 +66,26 @@ class KubernetesReadClient:
             for pod in pod_list.items:
                 results.append(self._parse_pod(pod))
             return results
-        except ApiException as e:
-            logger.error(f"Kubernetes API exception listing pods in {namespace}: {e}")
-            raise
+        except (ApiException, Exception) as e:
+            logger.error(f"Error listing pods in {namespace}: {e}")
+            return []
 
     def get_pod(self, namespace: str, pod_name: str) -> Optional[PodInfo]:
         """Inspects a single pod in detail."""
-        core = self.client_mgr.core_v1
+        if not self.client_mgr.is_connected():
+            return None
         try:
+            core = self.client_mgr.core_v1
             pod = core.read_namespaced_pod(name=pod_name, namespace=namespace)
             return self._parse_pod(pod)
         except ApiException as e:
             if e.status == 404:
                 return None
             logger.error(f"Error fetching pod {pod_name} in {namespace}: {e}")
-            raise
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching pod {pod_name} in {namespace}: {e}")
+            return None
 
     def get_pod_logs(
         self,
@@ -89,8 +96,17 @@ class KubernetesReadClient:
         previous: bool = False
     ) -> PodLogsResponse:
         """Retrieves raw container logs with tail options and previous termination log support."""
-        core = self.client_mgr.core_v1
+        if not self.client_mgr.is_connected():
+            return PodLogsResponse(
+                pod_name=pod_name,
+                namespace=namespace,
+                container=container,
+                tail_lines=tail_lines,
+                logs="Cluster is offline or unreachable.",
+                total_lines=1
+            )
         try:
+            core = self.client_mgr.core_v1
             kwargs = {
                 "tail_lines": tail_lines,
                 "previous": previous,
@@ -118,36 +134,54 @@ class KubernetesReadClient:
                 logs=f"Error reading logs from Kubernetes: {e.reason} (HTTP {e.status})",
                 total_lines=1
             )
+        except Exception as e:
+            return PodLogsResponse(
+                pod_name=pod_name,
+                namespace=namespace,
+                container=container,
+                tail_lines=tail_lines,
+                logs=f"Error connecting to Kubernetes API: {str(e)}",
+                total_lines=1
+            )
 
     def list_deployments(self, namespace: str) -> List[DeploymentInfo]:
         """Inspects all deployments in a namespace."""
-        apps = self.client_mgr.apps_v1
+        if not self.client_mgr.is_connected():
+            return []
         try:
+            apps = self.client_mgr.apps_v1
             dep_list = apps.list_namespaced_deployment(namespace=namespace)
             results: List[DeploymentInfo] = []
             for dep in dep_list.items:
                 results.append(self._parse_deployment(dep))
             return results
-        except ApiException as e:
+        except (ApiException, Exception) as e:
             logger.error(f"Error listing deployments in {namespace}: {e}")
-            raise
+            return []
 
     def get_deployment(self, namespace: str, deployment_name: str) -> Optional[DeploymentInfo]:
         """Inspects a single deployment in detail."""
-        apps = self.client_mgr.apps_v1
+        if not self.client_mgr.is_connected():
+            return None
         try:
+            apps = self.client_mgr.apps_v1
             dep = apps.read_namespaced_deployment(name=deployment_name, namespace=namespace)
             return self._parse_deployment(dep)
         except ApiException as e:
             if e.status == 404:
                 return None
             logger.error(f"Error reading deployment {deployment_name} in {namespace}: {e}")
-            raise
+            return None
+        except Exception as e:
+            logger.error(f"Error reading deployment {deployment_name} in {namespace}: {e}")
+            return None
 
     def get_events(self, namespace: str, involved_name: Optional[str] = None) -> List[K8sEventInfo]:
         """Fetches Kubernetes events for the namespace or a specific involved workload."""
-        core = self.client_mgr.core_v1
+        if not self.client_mgr.is_connected():
+            return []
         try:
+            core = self.client_mgr.core_v1
             events = core.list_namespaced_event(namespace=namespace).items
             results: List[K8sEventInfo] = []
             for ev in events:
@@ -168,9 +202,9 @@ class KubernetesReadClient:
                     last_timestamp=last_ts
                 ))
             return results
-        except ApiException as e:
+        except (ApiException, Exception) as e:
             logger.error(f"Error fetching events in {namespace}: {e}")
-            raise
+            return []
 
     def _parse_pod(self, pod) -> PodInfo:
         """Helper to convert raw V1Pod to structured PodInfo."""

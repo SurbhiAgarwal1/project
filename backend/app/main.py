@@ -16,10 +16,19 @@ logging.basicConfig(
 logger = logging.getLogger("opsara")
 
 
+from app.database.connection import init_db
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
     logger.info(f"Starting {settings.PROJECT_NAME} v{settings.VERSION} [{settings.ENVIRONMENT}]")
+    # Initialize persistent storage schema once at startup
+    try:
+        await init_db()
+        logger.info("Database schema initialized successfully.")
+    except Exception as e:
+        logger.error(f"Failed to initialize database schema: {e}")
+
     # Verify Kubernetes connection at startup
     k8s = get_k8s_client_manager()
     if k8s.is_connected():

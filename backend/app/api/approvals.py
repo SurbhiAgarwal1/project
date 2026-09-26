@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.connection import get_db, init_db, async_session
+from app.database.connection import get_db, async_session
 from app.database.repositories import (
     ApprovalRepository,
     IncidentRepository,
@@ -23,7 +23,6 @@ class ResolveApprovalRequest(BaseModel):
 
 @router.get("")
 async def list_pending_approvals(db: AsyncSession = Depends(get_db)):
-    await init_db()
     repo = ApprovalRepository(db)
     approvals = await repo.list_pending_approvals()
     return [
@@ -51,7 +50,6 @@ async def approve_action(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
-    await init_db()
     approval_repo = ApprovalRepository(db)
     incident_repo = IncidentRepository(db)
     action_repo = ActionRepository(db)
@@ -145,7 +143,6 @@ async def reject_action(
     req: ResolveApprovalRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    await init_db()
     approval_repo = ApprovalRepository(db)
     incident_repo = IncidentRepository(db)
 

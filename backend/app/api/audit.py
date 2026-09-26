@@ -1,7 +1,7 @@
 from typing import Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.database.connection import get_db, init_db
+from app.database.connection import get_db
 from app.database.repositories import AuditRepository
 
 router = APIRouter()
@@ -13,7 +13,6 @@ async def list_audit_logs(
     limit: int = 100,
     db: AsyncSession = Depends(get_db)
 ):
-    await init_db()
     repo = AuditRepository(db)
     logs = await repo.list_audit_logs(incident_id=incident_id, limit=limit)
     return [
