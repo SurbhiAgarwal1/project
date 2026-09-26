@@ -2,11 +2,35 @@
 
 > **Investigate. Approve. Remediate. Verify.**
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Available%20Now-00b4d8?style=for-the-badge&logo=cloudflare)](https://apart-household-simulations-paris.trycloudflare.com)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/SurbhiAgarwal1/project)
+[![Hackathon](https://img.shields.io/badge/TrueFoundry-Agents%20That%20Act-6366f1?style=for-the-badge)](https://truefoundry.com)
+
 Opsara is an agentic SRE and incident response platform built for the **TrueFoundry "Agents That Act" Hackathon** (Runbook Executor theme).
 
 Opsara gives an autonomous agent the ability to inspect live Kubernetes clusters, interpret operational runbooks, synthesize evidence-backed diagnoses, propose safe remediations, pause for mandatory human approval before mutating infrastructure, execute approved actions, and independently verify recovery.
 
 ---
+
+## 🌐 Live Interactive Demo
+
+- **Direct Public URL**: [https://apart-household-simulations-paris.trycloudflare.com](https://apart-household-simulations-paris.trycloudflare.com)
+- **GitHub Repository**: [https://github.com/SurbhiAgarwal1/project](https://github.com/SurbhiAgarwal1/project)
+- **Local Control Plane**: `http://localhost:3000`
+- **Backend API**: `http://127.0.0.1:8000/api`
+
+---
+
+## 🎬 Demo Video & Platform Walkthrough
+
+![Opsara Interactive Walkthrough](docs/opsara-demo.gif)
+
+> 📹 **High-Definition Video Downloads**:
+> - [Watch / Download MP4 Video (HD 1080/720p)](docs/opsara-demo.mp4)
+> - [Watch / Download WebM Video](docs/opsara-demo.webm)
+
+---
+
 
 ## 🎯 The Core Problem
 
@@ -156,5 +180,14 @@ opsara/
 
 ---
 
+## 🏆 Credits & Acknowledgements
+
+- **Hackathon**: Developed for the **TrueFoundry "Agents That Act" Hackathon** (Runbook Executor Track).
+- **Core Architecture**: Powered by LangGraph, FastAPI, Kubernetes Python SDK, React 18, and Tailwind CSS.
+- **Resource & Credit Efficiency**: Designed to operate with **zero mandatory external LLM API credit consumption** through a deterministic offline reasoning engine, while maintaining full drop-in compatibility for TrueFoundry / OpenAI LLM API keys.
+
+---
+
 ## ⚖️ License
 Apache-2.0 License.
+
