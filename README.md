@@ -108,6 +108,29 @@ graph TD
 
 ---
 
+## ☁️ Deploy to TrueFoundry Platform
+
+Opsara is configured for **native 1-click deployment on TrueFoundry**:
+
+### Option 1: 1-Click GitOps via TrueFoundry UI
+1. Navigate to your **[TrueFoundry Dashboard](https://app.truefoundry.com)**.
+2. Click **Deploy** ➔ **Service** ➔ **From Git Repository**.
+3. Select your repository: **`https://github.com/SurbhiAgarwal1/project`** (branch `main`).
+4. TrueFoundry automatically detects the multi-stage [Dockerfile](Dockerfile) and [truefoundry.yaml](truefoundry.yaml).
+5. Ensure Port is set to `8000` (FastAPI + React SPA unified service).
+6. Click **Deploy**. TrueFoundry will build the container, provision pods on Kubernetes, configure the `/healthz` probe, and generate an enterprise HTTPS endpoint.
+
+### Option 2: Deploy via TrueFoundry CLI (`tfy`)
+```bash
+# Login to TrueFoundry
+tfy login --api-key <YOUR_TRUEFOUNDRY_API_KEY>
+
+# Deploy using declarative spec
+tfy apply -f truefoundry.yaml
+```
+
+---
+
 ## 🚀 Quickstart Guide
 
 ### Prerequisites
