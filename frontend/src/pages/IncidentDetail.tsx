@@ -95,38 +95,74 @@ export const IncidentDetail: React.FC = () => {
     ? incident.verifications[incident.verifications.length - 1] 
     : null;
 
+  // Compute current stage in SRE pipeline
+  const getPipelineStage = () => {
+    switch (incident.status) {
+      case 'OPEN':
+        return 1;
+      case 'INVESTIGATING':
+        return 2;
+      case 'WAITING_FOR_APPROVAL':
+        return 4;
+      case 'EXECUTING':
+        return 5;
+      case 'VERIFYING':
+        return 6;
+      case 'RESOLVED':
+        return 7;
+      case 'ESCALATED':
+      case 'FAILED':
+        return 4;
+      default:
+        return 1;
+    }
+  };
+
+  const currentStage = getPipelineStage();
+
+  const pipelineSteps = [
+    { num: 1, label: 'Detection' },
+    { num: 2, label: 'Tool Inspection' },
+    { num: 3, label: 'Evidence Synthesis' },
+    { num: 4, label: 'Safety Gate' },
+    { num: 5, label: 'Mutation' },
+    { num: 6, label: 'Verification' },
+    { num: 7, label: 'Resolved' },
+  ];
+
   return (
-    <div className="p-8 space-y-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Top Breadcrumb & Status Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-[#1E293B]">
+      <div className="flex items-center justify-between pb-4 border-b border-[#1C2B47]">
         <div className="flex items-center space-x-4">
           <Link
             to="/incidents"
-            className="p-2 rounded bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white transition"
+            className="p-2 rounded bg-[#0D1526] hover:bg-[#131F38] text-slate-400 hover:text-white border border-[#1C2B47] transition"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
             <div className="flex items-center space-x-3 mb-1">
-              <h1 className="text-xl font-bold text-white tracking-tight">{incident.title}</h1>
+              <span className="font-mono text-sky-400 text-sm font-bold">#{incident.id.slice(0, 8)}</span>
+              <h1 className="text-lg font-bold text-white tracking-tight">{incident.title}</h1>
               <span className={`px-2.5 py-0.5 rounded font-mono text-xs font-bold ${
-                incident.status === 'WAITING_FOR_APPROVAL' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse' :
-                incident.status === 'INVESTIGATING' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' :
-                incident.status === 'RESOLVED' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                incident.status === 'ESCALATED' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
-                'bg-slate-700/50 text-slate-300'
+                incident.status === 'WAITING_FOR_APPROVAL' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse' :
+                incident.status === 'INVESTIGATING' ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' :
+                incident.status === 'RESOLVED' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' :
+                incident.status === 'ESCALATED' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' :
+                'bg-slate-800 text-slate-300 border border-slate-700'
               }`}>
                 {incident.status}
               </span>
             </div>
-            <div className="flex items-center space-x-4 text-xs font-mono text-slate-400">
-              <span>Service: <strong className="text-slate-200">{incident.service}</strong></span>
-              <span>•</span>
-              <span>Namespace: <strong className="text-slate-200">{incident.namespace}</strong></span>
+            <div className="flex items-center space-x-3 text-xs font-mono text-slate-400">
+              <span>Target: <strong className="text-slate-200">{incident.namespace}/{incident.service}</strong></span>
               <span>•</span>
               <span>Severity: <strong className="text-amber-400">{incident.severity}</strong></span>
               <span>•</span>
-              <span>Created: {new Date(incident.created_at).toLocaleString()}</span>
+              <span>Created: {new Date(incident.created_at).toLocaleTimeString()}</span>
+              <span>•</span>
+              <span>Safety Model: <strong className="text-sky-400">Deterministic Guardrails</strong></span>
             </div>
           </div>
         </div>
@@ -136,12 +172,46 @@ export const IncidentDetail: React.FC = () => {
             <button
               onClick={handleStart}
               disabled={starting}
-              className="flex items-center space-x-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-4 py-2 rounded text-xs transition shadow-lg shadow-sky-500/20"
+              className="flex items-center space-x-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-4 py-2 rounded text-xs transition shadow-lg shadow-sky-500/20 font-mono uppercase tracking-wider"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
-              <span>Start Investigation</span>
+              <span>Engage SRE Agent</span>
             </button>
           )}
+        </div>
+      </div>
+
+      {/* SRE Agent Execution Pipeline Stepper */}
+      <div className="bg-[#0C1220] border border-[#1C2B47] rounded-lg p-3.5 font-mono">
+        <div className="flex items-center justify-between text-[11px] mb-2 text-slate-400">
+          <span className="uppercase font-semibold tracking-wider text-slate-300">
+            Agentic Incident Response Pipeline (TrueFoundry Runbook Executor)
+          </span>
+          <span>Stage {currentStage} of 7</span>
+        </div>
+        <div className="grid grid-cols-7 gap-2">
+          {pipelineSteps.map((step) => {
+            const isCompleted = currentStage > step.num;
+            const isCurrent = currentStage === step.num;
+            return (
+              <div 
+                key={step.num}
+                className={`p-2 rounded border text-center transition ${
+                  isCurrent
+                    ? 'bg-sky-500/15 border-sky-400 text-sky-300 ring-1 ring-sky-400/30'
+                    : isCompleted
+                    ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-300'
+                    : 'bg-[#080C15] border-slate-800 text-slate-600'
+                }`}
+              >
+                <div className="text-[10px] uppercase font-bold flex items-center justify-center space-x-1">
+                  {isCompleted && <Check className="w-3 h-3 text-emerald-400" />}
+                  {isCurrent && <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping"></span>}
+                  <span>{step.label}</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

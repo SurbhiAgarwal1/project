@@ -61,44 +61,60 @@ export const Cluster: React.FC = () => {
 
       {/* Cluster Meta Row */}
       <div className="grid grid-cols-4 gap-4 text-xs font-mono">
-        <div className="bg-[#111827] border border-[#1E293B] rounded-lg p-4">
+        <div className="bg-[#0C1220] border border-[#1C2B47] rounded-lg p-4">
           <span className="text-slate-500 block mb-1">CONNECTION STATE</span>
           <div className="flex items-center space-x-2 font-semibold">
-            <span className={`w-2.5 h-2.5 rounded-full ${status?.connected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+            <span className={`w-2.5 h-2.5 rounded-full ${status?.connected ? 'bg-emerald-400 animate-pulse-live' : 'bg-amber-400'}`}></span>
             <span className={status?.connected ? 'text-emerald-400' : 'text-amber-400'}>
-              {status?.connected ? 'CONNECTED' : 'DISCONNECTED'}
+              {status?.connected ? 'CONNECTED (READY)' : 'DISCONNECTED'}
             </span>
           </div>
         </div>
 
-        <div className="bg-[#111827] border border-[#1E293B] rounded-lg p-4">
+        <div className="bg-[#0C1220] border border-[#1C2B47] rounded-lg p-4">
           <span className="text-slate-500 block mb-1">SERVER VERSION</span>
           <div className="text-slate-200 font-semibold">{status?.server_version || 'v1.32.2 (kind)'}</div>
         </div>
 
-        <div className="bg-[#111827] border border-[#1E293B] rounded-lg p-4">
+        <div className="bg-[#0C1220] border border-[#1C2B47] rounded-lg p-4">
           <span className="text-slate-500 block mb-1">CONTROL PLANE NODES</span>
-          <div className="text-slate-200 font-semibold">{status?.nodes_count || 1} node(s) active</div>
+          <div className="text-slate-200 font-semibold">{status?.nodes_count || 1} active node(s)</div>
         </div>
 
-        <div className="bg-[#111827] border border-[#1E293B] rounded-lg p-4">
+        <div className="bg-[#0C1220] border border-[#1C2B47] rounded-lg p-4">
           <span className="text-slate-500 block mb-1">ACTIVE NAMESPACE</span>
           <div className="text-sky-400 font-semibold">opsara-demo</div>
         </div>
       </div>
 
+      {/* Cluster Connection Guidance if offline */}
+      {!status?.connected && (
+        <div className="bg-amber-950/20 border border-amber-500/30 rounded-lg p-4 font-mono text-xs">
+          <div className="flex items-center space-x-2 text-amber-400 font-bold mb-1">
+            <AlertCircle className="w-4 h-4" />
+            <span>Kubernetes API Offline or Unreachable</span>
+          </div>
+          <p className="text-slate-400 text-[11px] leading-relaxed">
+            Opsara connects directly to your live Kubernetes cluster. When ready to run live in-cluster tests, start your cluster using any standard local tool:
+          </p>
+          <div className="mt-2 p-2 bg-[#05080F] rounded border border-slate-800 text-[11px] text-sky-300 select-all">
+            minikube start &nbsp;&nbsp;|&nbsp;&nbsp; kind create cluster --name opsara &nbsp;&nbsp;|&nbsp;&nbsp; kubectl apply -f k8s/demo-workload.yaml
+          </div>
+        </div>
+      )}
+
       {/* Deployments Table */}
-      <div className="bg-[#111827] border border-[#1E293B] rounded-lg overflow-hidden">
-        <div className="px-6 py-3.5 border-b border-[#1E293B] bg-[#0E131F] flex items-center justify-between">
+      <div className="bg-[#0C1220] border border-[#1C2B47] rounded-lg overflow-hidden">
+        <div className="px-6 py-3.5 border-b border-[#1C2B47] bg-[#090E1A] flex items-center justify-between">
           <h3 className="font-semibold text-xs uppercase tracking-wider text-slate-300 font-mono">
-            Deployments ({deployments.length})
+            Workload Deployments ({deployments.length})
           </h3>
           <span className="text-[11px] font-mono text-slate-500">Namespace: opsara-demo</span>
         </div>
 
         {deployments.length === 0 ? (
           <div className="p-8 text-center text-slate-500 text-xs font-mono">
-            No deployments queried or cluster disconnected.
+            No active deployments discovered in namespace opsara-demo.
           </div>
         ) : (
           <table className="w-full text-left text-xs">
