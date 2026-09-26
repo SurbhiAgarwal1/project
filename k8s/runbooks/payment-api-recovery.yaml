@@ -1,0 +1,48 @@
+id: payment-api-recovery
+name: Payment API Recovery Runbook
+service: payment-api
+namespace: opsara-demo
+description: Comprehensive operational runbook for diagnosing and restoring unhealthy Payment API service.
+
+steps:
+  - id: step-inspect-pods
+    action: inspect_pods
+    risk: READ_ONLY
+    requires_approval: false
+    description: Inspect pod phases, readiness, container states, and restart counts.
+
+  - id: step-inspect-logs
+    action: get_pod_logs
+    risk: READ_ONLY
+    requires_approval: false
+    description: Check recent container log output for stack traces, memory errors, or DB connection refused.
+
+  - id: step-inspect-events
+    action: get_kubernetes_events
+    risk: READ_ONLY
+    requires_approval: false
+    description: Inspect Kubernetes events for OOMKilled, BackOff, or Unhealthy signals.
+
+  - id: step-inspect-deployment
+    action: inspect_deployment
+    risk: READ_ONLY
+    requires_approval: false
+    description: Check desired vs available replicas and rollout conditions.
+
+  - id: step-health-check
+    action: run_health_check
+    risk: READ_ONLY
+    requires_approval: false
+    description: Query the live HTTP /health endpoint to verify whether service responds with HTTP 200.
+
+  - id: step-restart-deployment
+    action: restart_deployment
+    risk: MEDIUM
+    requires_approval: true
+    description: Execute rolling restart of deployment if failure is transient or process-level.
+
+  - id: step-verify-recovery
+    action: verify_recovery
+    risk: READ_ONLY
+    requires_approval: false
+    description: Deterministically verify desired replicas, pod readiness, and HTTP health check.

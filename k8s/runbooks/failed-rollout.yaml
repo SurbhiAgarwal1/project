@@ -1,0 +1,36 @@
+id: failed-rollout
+name: Failed Deployment Rollout Runbook
+service: payment-api
+namespace: opsara-demo
+description: Runbook for diagnosing stalled or crashed deployment rollouts and executing rollback to previously healthy revision.
+
+steps:
+  - id: step-check-rollout
+    action: inspect_deployment
+    risk: READ_ONLY
+    requires_approval: false
+    description: Inspect available vs updated replicas and rollout progress.
+
+  - id: step-inspect-pods
+    action: inspect_pods
+    risk: READ_ONLY
+    requires_approval: false
+    description: Detect CrashLoopBackOff or ImagePullBackOff on new ReplicaSet.
+
+  - id: step-inspect-events
+    action: get_kubernetes_events
+    risk: READ_ONLY
+    requires_approval: false
+    description: Identify failed container creation or failing readiness probes.
+
+  - id: step-rollback
+    action: rollback_deployment
+    risk: HIGH
+    requires_approval: true
+    description: Rollback deployment to previously functional ReplicaSet.
+
+  - id: step-verify-recovery
+    action: verify_recovery
+    risk: READ_ONLY
+    requires_approval: false
+    description: Confirm previous revision pods are healthy and responding.

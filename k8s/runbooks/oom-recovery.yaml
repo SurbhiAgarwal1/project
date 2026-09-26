@@ -1,0 +1,36 @@
+id: oom-recovery
+name: OOMKilled Memory Exhaustion Runbook
+service: payment-api
+namespace: opsara-demo
+description: Targeted runbook for detecting container OOM termination, verifying memory limits, and safely recovering workload.
+
+steps:
+  - id: step-inspect-pods
+    action: inspect_pods
+    risk: READ_ONLY
+    requires_approval: false
+    description: Inspect container termination reason for OOMKilled and restart frequency.
+
+  - id: step-inspect-limits
+    action: inspect_deployment
+    risk: READ_ONLY
+    requires_approval: false
+    description: Inspect container memory limits (128Mi) and requests (64Mi).
+
+  - id: step-inspect-events
+    action: get_kubernetes_events
+    risk: READ_ONLY
+    requires_approval: false
+    description: Confirm system OOMKilled kernel events.
+
+  - id: step-restart-remediation
+    action: restart_deployment
+    risk: MEDIUM
+    requires_approval: true
+    description: Propose rolling restart to clear memory leak or restart container under clean state.
+
+  - id: step-verify
+    action: verify_recovery
+    risk: READ_ONLY
+    requires_approval: false
+    description: Verify pods are ready and health check passes.

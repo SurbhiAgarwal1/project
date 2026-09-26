@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-api
+  namespace: opsara-demo
+  labels:
+    app: payment-api
+    app.kubernetes.io/name: payment-api
+    app.kubernetes.io/part-of: opsara
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: payment-api
+  template:
+    metadata:
+      labels:
+        app: payment-api
+        app.kubernetes.io/name: payment-api
+        app.kubernetes.io/part-of: opsara
+    spec:
+      containers:
+      - name: payment-api
+        image: python:3.12-alpine
+        command: ["python", "-u", "/app/server.py"]
+        env:
+        - name: APP_VERSION
+          value: "v1.0.0"
+        - name: APP_MODE
+          value: "normal"
+        ports:
+        - containerPort: 8000
+          name: http
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+          initialDelaySeconds: 2
+          periodSeconds: 5
+          timeoutSeconds: 2
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 2
+        volumeMounts:
+        - name: code-volume
+          mountPath: /app
+      volumes:
+      - name: code-volume
+        configMap:
+          name: payment-api-code
