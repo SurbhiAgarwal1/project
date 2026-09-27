@@ -2,7 +2,7 @@
 
 > **Investigate. Approve. Remediate. Verify.**
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Available%20Now-00b4d8?style=for-the-badge&logo=cloudflare)](https://apart-household-simulations-paris.trycloudflare.com)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Available%20Now-00b4d8?style=for-the-badge&logo=cloudflare)](https://planners-breathing-rack-subaru.trycloudflare.com)
 [![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/SurbhiAgarwal1/project)
 [![Hackathon](https://img.shields.io/badge/TrueFoundry-Agents%20That%20Act-6366f1?style=for-the-badge)](https://truefoundry.com)
 
@@ -14,7 +14,8 @@ Opsara gives an autonomous agent the ability to inspect live Kubernetes clusters
 
 ## 🌐 Live Interactive Demo
 
-- **Direct Public URL**: [https://apart-household-simulations-paris.trycloudflare.com](https://apart-household-simulations-paris.trycloudflare.com)
+- **Direct Public URL**: [https://planners-breathing-rack-subaru.trycloudflare.com](https://planners-breathing-rack-subaru.trycloudflare.com)
+- **Compliance Audit Trail**: [https://planners-breathing-rack-subaru.trycloudflare.com/audit](https://planners-breathing-rack-subaru.trycloudflare.com/audit)
 - **GitHub Repository**: [https://github.com/SurbhiAgarwal1/project](https://github.com/SurbhiAgarwal1/project)
 - **Local Control Plane**: `http://localhost:3000`
 - **Backend API**: `http://127.0.0.1:8000/api`
