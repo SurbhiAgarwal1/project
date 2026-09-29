@@ -1,4 +1,4 @@
-# Opsara — Agentic Kubernetes Incident Response Platform
+# Opsara 
 
 > **Investigate. Approve. Remediate. Verify.**
 
